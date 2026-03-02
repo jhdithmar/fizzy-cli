@@ -152,6 +152,61 @@ func TestMarkdownSanitization(t *testing.T) {
 		}
 	})
 
+	t.Run("real attachment with backtick-wrapped attachment tag in same description", func(t *testing.T) {
+		wd, _ := os.Getwd()
+		fixturePath := filepath.Join(wd, "..", "testdata", "fixtures", "test_image.png")
+		if _, err := os.Stat(fixturePath); os.IsNotExist(err) {
+			t.Skipf("test fixture not found at %s", fixturePath)
+		}
+
+		// Upload the file
+		uploadResult := h.Run("upload", "file", fixturePath)
+		if uploadResult.ExitCode != harness.ExitSuccess {
+			t.Fatalf("failed to upload file: %s\nstdout: %s", uploadResult.Stderr, uploadResult.Stdout)
+		}
+		attachableSGID := uploadResult.GetDataString("attachable_sgid")
+		if attachableSGID == "" {
+			t.Fatalf("no attachable_sgid returned from upload")
+		}
+
+		// Create card with a real attachment AND backtick-wrapped example tag
+		title := fmt.Sprintf("Mixed Real and Backtick Attachment %d", time.Now().UnixNano())
+		description := fmt.Sprintf("<p>See the image:</p><action-text-attachment sgid=\"%s\"></action-text-attachment><p>To embed attachments use: `<action-text-attachment sgid=\"...\" content-type=\"...\"></action-text-attachment>`</p>", attachableSGID)
+
+		cardResult := h.Run("card", "create", "--board", boardID, "--title", title, "--description", description)
+		if cardResult.ExitCode != harness.ExitSuccess {
+			t.Fatalf("failed to create card: %s\nstdout: %s", cardResult.Stderr, cardResult.Stdout)
+		}
+		cardNumber := cardResult.GetNumberFromLocation()
+		if cardNumber == 0 {
+			cardNumber = cardResult.GetDataInt("number")
+		}
+		if cardNumber != 0 {
+			h.Cleanup.AddCard(cardNumber)
+		}
+
+		// Verify the real attachment is there
+		attachResult := h.Run("card", "attachments", "show", strconv.Itoa(cardNumber))
+		if attachResult.ExitCode != harness.ExitSuccess {
+			t.Fatalf("failed to show attachments: %s", attachResult.Stderr)
+		}
+
+		attachments := attachResult.GetDataArray()
+		if len(attachments) != 1 {
+			t.Errorf("expected exactly 1 real attachment, got %d", len(attachments))
+		}
+
+		// Verify the backtick content was escaped (check description_html)
+		showResult := h.Run("card", "show", strconv.Itoa(cardNumber))
+		if showResult.ExitCode != harness.ExitSuccess {
+			t.Fatalf("failed to show card: %s", showResult.Stderr)
+		}
+		descHTML := showResult.GetDataString("description_html")
+		if !strings.Contains(descHTML, "<code>") {
+			t.Errorf("expected backtick content to be converted to <code> tag:\n%s", descHTML)
+		}
+	})
+
 	t.Run("real comment attachment still works after markdown conversion", func(t *testing.T) {
 		wd, _ := os.Getwd()
 		fixturePath := filepath.Join(wd, "..", "testdata", "fixtures", "test_image.png")
