@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/basecamp/cli/output"
 	"github.com/basecamp/fizzy-cli/internal/client"
 	"github.com/basecamp/fizzy-cli/internal/config"
 	"github.com/basecamp/fizzy-cli/internal/errors"
@@ -36,6 +37,10 @@ func init() {
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
+	if IsMachineOutput() {
+		return output.ErrUsageHint("setup requires an interactive terminal", "Run without --agent/--json/--quiet or in a TTY")
+	}
+
 	fmt.Println()
 	fmt.Println("Welcome to Fizzy CLI setup!")
 	fmt.Println()
@@ -238,9 +243,24 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	if saveGlobal {
+		// Save token to credstore when available
+		credstoreSaved := false
+		if creds != nil {
+			if err := credsSaveToken(token); err != nil {
+				fmt.Printf("Warning: could not save token to credential store: %v\n", err)
+			} else {
+				credstoreSaved = true
+			}
+		}
+
 		// Load existing global config to preserve any other settings
 		existingConfig := config.LoadGlobal()
-		existingConfig.Token = newConfig.Token
+		// Only clear YAML token when credstore save actually succeeded
+		if credstoreSaved {
+			existingConfig.Token = ""
+		} else {
+			existingConfig.Token = newConfig.Token
+		}
 		existingConfig.Account = newConfig.Account
 		existingConfig.Board = newConfig.Board
 		if newConfig.APIURL != "" {
