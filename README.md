@@ -24,14 +24,24 @@
 ## Quick Start
 
 ```bash
-brew install basecamp/tap/fizzy
+curl -fsSL https://raw.githubusercontent.com/basecamp/fizzy-cli/master/scripts/install.sh | bash
 fizzy setup
 ```
 
-That's it. The setup wizard walks you through configuring your token, selecting your account, and optionally setting a default board. Try `fizzy board list` to verify everything is working.
+That's it. The installer detects your platform and architecture, downloads the right binary, and verifies checksums. The setup wizard then walks you through configuring your token, selecting your account, and optionally setting a default board. Try `fizzy board list` to verify everything is working.
 
 <details>
 <summary>Other installation methods</summary>
+
+**Omarchy/Arch Linux (AUR):**
+```bash
+yay -S fizzy-cli
+```
+
+**Homebrew (macOS):**
+```bash
+brew install basecamp/tap/fizzy
+```
 
 **Scoop (Windows):**
 ```bash
@@ -39,19 +49,9 @@ scoop bucket add basecamp https://github.com/basecamp/homebrew-tap
 scoop install fizzy
 ```
 
-**curl installer:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/basecamp/fizzy-cli/master/scripts/install.sh | bash
-```
-
 **Go install:**
 ```bash
 go install github.com/basecamp/fizzy-cli/cmd/fizzy@latest
-```
-
-**Arch Linux (AUR):**
-```bash
-yay -S fizzy-cli
 ```
 
 **Debian/Ubuntu:**
