@@ -18,12 +18,13 @@ var identityShowCmd = &cobra.Command{
 		if err := requireAuth(); err != nil {
 			return err
 		}
-
-		client := getClient()
-		// Identity endpoint doesn't use account prefix
-		resp, err := client.Get(cfg.APIURL + "/my/identity.json")
-		if err != nil {
+		if err := requireSDK(); err != nil {
 			return err
+		}
+
+		data, _, err := getSDKClient().Identity().GetMyIdentity(cmd.Context())
+		if err != nil {
+			return convertSDKError(err)
 		}
 
 		// Build breadcrumbs
@@ -31,7 +32,7 @@ var identityShowCmd = &cobra.Command{
 			breadcrumb("status", "fizzy auth status", "Auth status"),
 		}
 
-		printDetail(resp.Data, "", breadcrumbs)
+		printDetail(normalizeAny(data), "", breadcrumbs)
 		return nil
 	},
 }
