@@ -59,9 +59,9 @@ func StyledList(data []map[string]any, cols Columns, summary string) string {
 		Border(lipgloss.NormalBorder()).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
-				return headerStyle
+				return headerStyle.PaddingRight(1)
 			}
-			return lipgloss.NewStyle()
+			return lipgloss.NewStyle().PaddingRight(1)
 		})
 
 	var sb strings.Builder
