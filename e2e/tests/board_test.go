@@ -191,7 +191,6 @@ func TestBoardCRUD(t *testing.T) {
 
 		// Verify unpublish works (cleanup is skipped since we unpublish here)
 		unpublishResult := h.Run("board", "unpublish", boardID)
-		published = false
 		if unpublishResult.ExitCode != harness.ExitSuccess {
 			t.Fatalf("expected exit code %d, got %d\nstderr: %s\nstdout: %s",
 				harness.ExitSuccess, unpublishResult.ExitCode, unpublishResult.Stderr, unpublishResult.Stdout)
@@ -204,6 +203,8 @@ func TestBoardCRUD(t *testing.T) {
 		if !unpublishResult.Response.OK {
 			t.Fatalf("expected ok=true, error: %+v", unpublishResult.Response.Error)
 		}
+
+		published = false
 
 		if !unpublishResult.GetDataBool("unpublished") {
 			t.Error("expected unpublished=true")
