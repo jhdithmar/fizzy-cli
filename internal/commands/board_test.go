@@ -352,11 +352,11 @@ func TestBoardCreate(t *testing.T) {
 
 		boardCreateName = "Private Board"
 		boardCreateAllAccess = "false"
-		boardCreateAutoPostponePeriod = 7
+		boardCreateAutoPostponePeriodInDays = 7
 		err := boardCreateCmd.RunE(boardCreateCmd, []string{})
 		boardCreateName = ""
 		boardCreateAllAccess = ""
-		boardCreateAutoPostponePeriod = 0
+		boardCreateAutoPostponePeriodInDays = 0
 
 		assertExitCode(t, err, 0)
 
@@ -368,8 +368,8 @@ func TestBoardCreate(t *testing.T) {
 		if v, ok := body["all_access"]; ok && v != false {
 			t.Errorf("expected all_access false or absent, got %v", body["all_access"])
 		}
-		if body["auto_postpone_period"] != float64(7) {
-			t.Errorf("expected auto_postpone_period 7, got %v", body["auto_postpone_period"])
+		if body["auto_postpone_period_in_days"] != float64(7) {
+			t.Errorf("expected auto_postpone_period_in_days 7, got %v", body["auto_postpone_period_in_days"])
 		}
 	})
 }
@@ -565,6 +565,101 @@ func TestBoardUnpublish(t *testing.T) {
 		defer ResetTestMode()
 
 		err := boardUnpublishCmd.RunE(boardUnpublishCmd, []string{"999"})
+		assertExitCode(t, err, errors.ExitNotFound)
+	})
+}
+
+func TestBoardCreateRejectsInvalidAutoPostponePeriod(t *testing.T) {
+	mock := NewMockClient()
+	SetTestModeWithSDK(mock)
+	SetTestConfig("token", "account", "https://api.example.com")
+	defer resetTest()
+
+	boardCreateName = "Test"
+	boardCreateAutoPostponePeriodInDays = 15
+	err := boardCreateCmd.RunE(boardCreateCmd, []string{})
+	boardCreateName = ""
+	boardCreateAutoPostponePeriodInDays = 0
+
+	assertExitCode(t, err, errors.ExitInvalidArgs)
+}
+
+func TestBoardEntropy(t *testing.T) {
+	t.Run("updates board auto-postpone period", func(t *testing.T) {
+		mock := NewMockClient()
+		mock.PutResponse = &client.APIResponse{
+			StatusCode: 200,
+			Data: map[string]any{
+				"id":                           "board-1",
+				"name":                         "Test Board",
+				"auto_postpone_period_in_days": float64(90),
+			},
+		}
+
+		result := SetTestModeWithSDK(mock)
+		SetTestConfig("token", "account", "https://api.example.com")
+		defer resetTest()
+
+		boardEntropyAutoPostponePeriodInDays = 90
+		err := boardEntropyCmd.RunE(boardEntropyCmd, []string{"board-1"})
+		boardEntropyAutoPostponePeriodInDays = 0
+
+		assertExitCode(t, err, 0)
+
+		if !result.Response.OK {
+			t.Error("expected success response")
+		}
+		if len(mock.PutCalls) != 1 {
+			t.Errorf("expected 1 Put call, got %d", len(mock.PutCalls))
+		}
+		if mock.PutCalls[0].Path != "/boards/board-1/entropy.json" {
+			t.Errorf("expected path '/boards/board-1/entropy.json', got '%s'", mock.PutCalls[0].Path)
+		}
+		body, ok := mock.PutCalls[0].Body.(map[string]any)
+		if !ok {
+			t.Fatal("expected map body")
+		}
+		if body["auto_postpone_period_in_days"] != float64(90) {
+			t.Errorf("expected auto_postpone_period_in_days 90, got %v", body["auto_postpone_period_in_days"])
+		}
+	})
+
+	t.Run("requires auto_postpone_period_in_days flag", func(t *testing.T) {
+		mock := NewMockClient()
+		SetTestModeWithSDK(mock)
+		SetTestConfig("token", "account", "https://api.example.com")
+		defer resetTest()
+
+		boardEntropyAutoPostponePeriodInDays = 0
+		err := boardEntropyCmd.RunE(boardEntropyCmd, []string{"board-1"})
+		assertExitCode(t, err, errors.ExitInvalidArgs)
+	})
+
+	t.Run("rejects invalid period", func(t *testing.T) {
+		mock := NewMockClient()
+		SetTestModeWithSDK(mock)
+		SetTestConfig("token", "account", "https://api.example.com")
+		defer resetTest()
+
+		boardEntropyAutoPostponePeriodInDays = 45
+		err := boardEntropyCmd.RunE(boardEntropyCmd, []string{"board-1"})
+		boardEntropyAutoPostponePeriodInDays = 0
+
+		assertExitCode(t, err, errors.ExitInvalidArgs)
+	})
+
+	t.Run("handles not found", func(t *testing.T) {
+		mock := NewMockClient()
+		mock.PutError = errors.NewNotFoundError("Board not found")
+
+		SetTestModeWithSDK(mock)
+		SetTestConfig("token", "account", "https://api.example.com")
+		defer resetTest()
+
+		boardEntropyAutoPostponePeriodInDays = 30
+		err := boardEntropyCmd.RunE(boardEntropyCmd, []string{"nonexistent"})
+		boardEntropyAutoPostponePeriodInDays = 0
+
 		assertExitCode(t, err, errors.ExitNotFound)
 	})
 }

@@ -97,7 +97,8 @@ Want to change something?
 
 | Resource | List | Show | Create | Update | Delete | Other |
 |----------|------|------|--------|--------|--------|-------|
-| board | `board list` | `board show ID` | `board create` | `board update ID` | `board delete ID` | `board publish ID`, `board unpublish ID`, `migrate board ID` |
+| account | - | `account show` | - | - | - | `account entropy` |
+| board | `board list` | `board show ID` | `board create` | `board update ID` | `board delete ID` | `board publish ID`, `board unpublish ID`, `board entropy ID`, `migrate board ID` |
 | card | `card list` | `card show NUMBER` | `card create` | `card update NUMBER` | `card delete NUMBER` | `card move NUMBER` |
 | search | `search QUERY` | - | - | - | - | - |
 | column | `column list --board ID` | `column show ID --board ID` | `column create` | `column update ID` | `column delete ID` | - |
@@ -442,6 +443,15 @@ fizzy comment list --card 579 | jq '.data | length'
 fizzy identity show                    # Show your identity and accessible accounts
 ```
 
+### Account
+
+```bash
+fizzy account show                     # Show account settings (name, auto-postpone period)
+fizzy account entropy --auto_postpone_period_in_days N  # Update account default auto-postpone period (admin only, N: 3, 7, 11, 30, 90, 365)
+```
+
+The `auto_postpone_period_in_days` is the account-level default. Cards are automatically moved to "Not Now" after this period of inactivity. Each board can override this with `board entropy`.
+
 ### Search
 
 Quick text search across cards. Multiple words are treated as separate terms (AND).
@@ -471,14 +481,16 @@ fizzy search "feature" --sort newest   # Sort by newest first
 ```bash
 fizzy board list [--page N] [--all]
 fizzy board show BOARD_ID
-fizzy board create --name "Name" [--all_access true/false] [--auto_postpone_period N]
-fizzy board update BOARD_ID [--name "Name"] [--all_access true/false] [--auto_postpone_period N]
+fizzy board create --name "Name" [--all_access true/false] [--auto_postpone_period_in_days N]
+fizzy board update BOARD_ID [--name "Name"] [--all_access true/false] [--auto_postpone_period_in_days N]
 fizzy board publish BOARD_ID
 fizzy board unpublish BOARD_ID
 fizzy board delete BOARD_ID
+fizzy board entropy BOARD_ID --auto_postpone_period_in_days N  # N: 3, 7, 11, 30, 90, 365
 ```
 
 `board show` includes `public_url` only when the board is published.
+`board entropy` updates the auto-postpone period for a specific board (overrides account default). Requires board admin.
 
 ### Board Migration
 
@@ -908,9 +920,20 @@ Complete field reference for all resources. Use these exact field paths in jq qu
 | `id` | string | Board ID (use for CLI commands) |
 | `name` | string | Board name |
 | `all_access` | boolean | All users have access |
+| `auto_postpone_period_in_days` | integer | Days of inactivity before cards are auto-postponed |
 | `created_at` | timestamp | ISO 8601 |
 | `url` | string | Web URL |
 | `creator` | object | Nested User |
+
+### Account Settings Schema (from `account show`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Account ID |
+| `name` | string | Account name |
+| `cards_count` | integer | Total cards in account |
+| `auto_postpone_period_in_days` | integer | Account-level default auto-postpone period |
+| `created_at` | timestamp | ISO 8601 |
 
 ### User Schema
 

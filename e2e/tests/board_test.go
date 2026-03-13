@@ -302,9 +302,9 @@ func TestBoardCreateWithOptions(t *testing.T) {
 		}
 	})
 
-	t.Run("create board with auto_postpone_period", func(t *testing.T) {
+	t.Run("create board with auto_postpone_period_in_days", func(t *testing.T) {
 		name := fmt.Sprintf("Auto Postpone Board %d", time.Now().UnixNano())
-		result := h.Run("board", "create", "--name", name, "--auto_postpone_period", "7")
+		result := h.Run("board", "create", "--name", name, "--auto_postpone_period_in_days", "7")
 
 		if result.ExitCode != harness.ExitSuccess {
 			t.Fatalf("expected exit code %d, got %d\nstderr: %s", harness.ExitSuccess, result.ExitCode, result.Stderr)

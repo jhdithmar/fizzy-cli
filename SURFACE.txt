@@ -1,4 +1,8 @@
 CMD fizzy
+CMD fizzy account
+CMD fizzy account entropy
+CMD fizzy account help
+CMD fizzy account show
 CMD fizzy auth
 CMD fizzy auth help
 CMD fizzy auth list
@@ -9,6 +13,7 @@ CMD fizzy auth switch
 CMD fizzy board
 CMD fizzy board create
 CMD fizzy board delete
+CMD fizzy board entropy
 CMD fizzy board help
 CMD fizzy board list
 CMD fizzy board publish
@@ -136,6 +141,59 @@ FLAG fizzy --quiet type=bool
 FLAG fizzy --styled type=bool
 FLAG fizzy --token type=string
 FLAG fizzy --verbose type=bool
+FLAG fizzy account --agent type=bool
+FLAG fizzy account --api-url type=string
+FLAG fizzy account --count type=bool
+FLAG fizzy account --help type=bool
+FLAG fizzy account --ids-only type=bool
+FLAG fizzy account --json type=bool
+FLAG fizzy account --limit type=int
+FLAG fizzy account --markdown type=bool
+FLAG fizzy account --profile type=string
+FLAG fizzy account --quiet type=bool
+FLAG fizzy account --styled type=bool
+FLAG fizzy account --token type=string
+FLAG fizzy account --verbose type=bool
+FLAG fizzy account entropy --agent type=bool
+FLAG fizzy account entropy --api-url type=string
+FLAG fizzy account entropy --auto_postpone_period_in_days type=int
+FLAG fizzy account entropy --count type=bool
+FLAG fizzy account entropy --help type=bool
+FLAG fizzy account entropy --ids-only type=bool
+FLAG fizzy account entropy --json type=bool
+FLAG fizzy account entropy --limit type=int
+FLAG fizzy account entropy --markdown type=bool
+FLAG fizzy account entropy --profile type=string
+FLAG fizzy account entropy --quiet type=bool
+FLAG fizzy account entropy --styled type=bool
+FLAG fizzy account entropy --token type=string
+FLAG fizzy account entropy --verbose type=bool
+FLAG fizzy account help --agent type=bool
+FLAG fizzy account help --api-url type=string
+FLAG fizzy account help --count type=bool
+FLAG fizzy account help --help type=bool
+FLAG fizzy account help --ids-only type=bool
+FLAG fizzy account help --json type=bool
+FLAG fizzy account help --limit type=int
+FLAG fizzy account help --markdown type=bool
+FLAG fizzy account help --profile type=string
+FLAG fizzy account help --quiet type=bool
+FLAG fizzy account help --styled type=bool
+FLAG fizzy account help --token type=string
+FLAG fizzy account help --verbose type=bool
+FLAG fizzy account show --agent type=bool
+FLAG fizzy account show --api-url type=string
+FLAG fizzy account show --count type=bool
+FLAG fizzy account show --help type=bool
+FLAG fizzy account show --ids-only type=bool
+FLAG fizzy account show --json type=bool
+FLAG fizzy account show --limit type=int
+FLAG fizzy account show --markdown type=bool
+FLAG fizzy account show --profile type=string
+FLAG fizzy account show --quiet type=bool
+FLAG fizzy account show --styled type=bool
+FLAG fizzy account show --token type=string
+FLAG fizzy account show --verbose type=bool
 FLAG fizzy auth --agent type=bool
 FLAG fizzy auth --api-url type=string
 FLAG fizzy auth --count type=bool
@@ -244,7 +302,7 @@ FLAG fizzy board --verbose type=bool
 FLAG fizzy board create --agent type=bool
 FLAG fizzy board create --all_access type=string
 FLAG fizzy board create --api-url type=string
-FLAG fizzy board create --auto_postpone_period type=int
+FLAG fizzy board create --auto_postpone_period_in_days type=int
 FLAG fizzy board create --count type=bool
 FLAG fizzy board create --help type=bool
 FLAG fizzy board create --ids-only type=bool
@@ -270,6 +328,20 @@ FLAG fizzy board delete --quiet type=bool
 FLAG fizzy board delete --styled type=bool
 FLAG fizzy board delete --token type=string
 FLAG fizzy board delete --verbose type=bool
+FLAG fizzy board entropy --agent type=bool
+FLAG fizzy board entropy --api-url type=string
+FLAG fizzy board entropy --auto_postpone_period_in_days type=int
+FLAG fizzy board entropy --count type=bool
+FLAG fizzy board entropy --help type=bool
+FLAG fizzy board entropy --ids-only type=bool
+FLAG fizzy board entropy --json type=bool
+FLAG fizzy board entropy --limit type=int
+FLAG fizzy board entropy --markdown type=bool
+FLAG fizzy board entropy --profile type=string
+FLAG fizzy board entropy --quiet type=bool
+FLAG fizzy board entropy --styled type=bool
+FLAG fizzy board entropy --token type=string
+FLAG fizzy board entropy --verbose type=bool
 FLAG fizzy board help --agent type=bool
 FLAG fizzy board help --api-url type=string
 FLAG fizzy board help --count type=bool
@@ -340,7 +412,7 @@ FLAG fizzy board unpublish --verbose type=bool
 FLAG fizzy board update --agent type=bool
 FLAG fizzy board update --all_access type=string
 FLAG fizzy board update --api-url type=string
-FLAG fizzy board update --auto_postpone_period type=int
+FLAG fizzy board update --auto_postpone_period_in_days type=int
 FLAG fizzy board update --count type=bool
 FLAG fizzy board update --help type=bool
 FLAG fizzy board update --ids-only type=bool
@@ -1869,6 +1941,10 @@ FLAG fizzy webhook update --quiet type=bool
 FLAG fizzy webhook update --styled type=bool
 FLAG fizzy webhook update --token type=string
 FLAG fizzy webhook update --verbose type=bool
+SUB fizzy account
+SUB fizzy account entropy
+SUB fizzy account help
+SUB fizzy account show
 SUB fizzy auth
 SUB fizzy auth help
 SUB fizzy auth list
@@ -1879,6 +1955,7 @@ SUB fizzy auth switch
 SUB fizzy board
 SUB fizzy board create
 SUB fizzy board delete
+SUB fizzy board entropy
 SUB fizzy board help
 SUB fizzy board list
 SUB fizzy board publish
