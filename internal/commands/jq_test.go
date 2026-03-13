@@ -42,6 +42,75 @@ func TestResolveFormatJQImpliesJSON(t *testing.T) {
 			t.Errorf("expected FormatQuiet, got %v", f)
 		}
 	})
+
+	t.Run("--jq --styled is an error", func(t *testing.T) {
+		resetTest()
+		cfgJQ = ".data"
+		cfgStyled = true
+		_, err := resolveFormat()
+		if err == nil {
+			t.Fatal("expected error for --jq --styled")
+		}
+		if !strings.Contains(err.Error(), "--jq cannot be used with") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("--jq --markdown is an error", func(t *testing.T) {
+		resetTest()
+		cfgJQ = ".data"
+		cfgMarkdown = true
+		_, err := resolveFormat()
+		if err == nil {
+			t.Fatal("expected error for --jq --markdown")
+		}
+	})
+
+	t.Run("--jq --ids-only is an error", func(t *testing.T) {
+		resetTest()
+		cfgJQ = ".data"
+		cfgIDsOnly = true
+		_, err := resolveFormat()
+		if err == nil {
+			t.Fatal("expected error for --jq --ids-only")
+		}
+	})
+
+	t.Run("--jq --count is an error", func(t *testing.T) {
+		resetTest()
+		cfgJQ = ".data"
+		cfgCount = true
+		_, err := resolveFormat()
+		if err == nil {
+			t.Fatal("expected error for --jq --count")
+		}
+	})
+
+	t.Run("--jq --json is allowed", func(t *testing.T) {
+		resetTest()
+		cfgJQ = ".data"
+		cfgJSON = true
+		f, err := resolveFormat()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if f != output.FormatJSON {
+			t.Errorf("expected FormatJSON, got %v", f)
+		}
+	})
+
+	t.Run("--jq --quiet is allowed", func(t *testing.T) {
+		resetTest()
+		cfgJQ = ".data"
+		cfgQuiet = true
+		f, err := resolveFormat()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if f != output.FormatQuiet {
+			t.Errorf("expected FormatQuiet, got %v", f)
+		}
+	})
 }
 
 func TestJQIsMachineOutput(t *testing.T) {

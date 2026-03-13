@@ -43,7 +43,9 @@ func (w *jqWriter) Write(p []byte) (int, error) {
 			return 0, fmt.Errorf("jq: %w", err)
 		}
 		if s, isStr := v.(string); isStr {
-			fmt.Fprintln(w.dest, s)
+			if _, err := fmt.Fprintln(w.dest, s); err != nil {
+				return 0, err
+			}
 		} else {
 			enc := json.NewEncoder(w.dest)
 			enc.SetIndent("", "  ")

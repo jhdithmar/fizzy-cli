@@ -228,6 +228,11 @@ func resolveFormat() (output.Format, error) {
 		return 0, fmt.Errorf("--agent and --styled cannot be used together")
 	}
 
+	// --jq is incompatible with non-JSON format flags
+	if cfgJQ != "" && (cfgStyled || cfgMarkdown || cfgIDsOnly || cfgCount) {
+		return 0, fmt.Errorf("--jq cannot be used with --styled, --markdown, --ids-only, or --count")
+	}
+
 	// Explicit format flag wins
 	switch {
 	case cfgQuiet:
