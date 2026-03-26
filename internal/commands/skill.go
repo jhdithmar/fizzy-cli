@@ -22,7 +22,8 @@ type SkillLocation struct {
 }
 
 var skillLocations = []SkillLocation{
-	{Name: "Agents (Shared)", Path: "~/.agents/skills/fizzy/SKILL.md"},
+	{Name: "Agents (Global)", Path: "~/.agents/skills/fizzy/SKILL.md"},
+	{Name: "Agents (Project)", Path: ".agents/skills/fizzy/SKILL.md"},
 	{Name: "Claude Code (Global)", Path: "~/.claude/skills/fizzy/SKILL.md"},
 	{Name: "Claude Code (Project)", Path: ".claude/skills/fizzy/SKILL.md"},
 	{Name: "OpenCode (Global)", Path: "~/.config/opencode/skill/fizzy/SKILL.md"},
