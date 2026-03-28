@@ -122,6 +122,29 @@ func TestSearch(t *testing.T) {
 		}
 	})
 
+	t.Run("does not inject default board into search", func(t *testing.T) {
+		mock := NewMockClient()
+		mock.GetWithPaginationResponse = &client.APIResponse{
+			StatusCode: 200,
+			Data:       []any{},
+		}
+
+		SetTestModeWithSDK(mock)
+		SetTestConfig("token", "account", "https://api.example.com")
+		cfg.Board = "default-board-id"
+		defer resetTest()
+
+		searchBoard = ""
+		err := searchCmd.RunE(searchCmd, []string{"bug"})
+		searchBoard = ""
+
+		assertExitCode(t, err, 0)
+		path := mock.GetWithPaginationCalls[0].Path
+		if path != "/cards.json?terms[]=bug" {
+			t.Errorf("expected no board_ids in path, got '%s'", path)
+		}
+	})
+
 	t.Run("requires authentication", func(t *testing.T) {
 		mock := NewMockClient()
 		SetTestModeWithSDK(mock)
