@@ -139,6 +139,9 @@ func TestSearch(t *testing.T) {
 		searchBoard = ""
 
 		assertExitCode(t, err, 0)
+		if len(mock.GetWithPaginationCalls) != 1 {
+			t.Fatalf("expected 1 GetWithPagination call, got %d", len(mock.GetWithPaginationCalls))
+		}
 		path := mock.GetWithPaginationCalls[0].Path
 		if path != "/cards.json?terms[]=bug" {
 			t.Errorf("expected no board_ids in path, got '%s'", path)
