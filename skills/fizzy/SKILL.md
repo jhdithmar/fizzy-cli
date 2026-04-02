@@ -116,14 +116,14 @@ Want to change something?
 
 ## Global Flags
 
-All commands support:
+All commands support these global flags unless noted otherwise:
 
 | Flag | Description |
 |------|-------------|
 | `--token TOKEN` | API access token |
 | `--profile NAME` | Named profile (for multi-account users) |
 | `--api-url URL` | API base URL (default: https://app.fizzy.do) |
-| `--jq EXPR` | Built-in jq filter for machine-readable JSON output (no external jq required; implies --json, or filters raw data with --quiet/--agent; incompatible with --styled, --markdown, --ids-only, and --count) |
+| `--jq EXPR` | Built-in jq filter for machine-readable JSON output (no external jq required; implies --json, or filters raw data with --quiet/--agent; unavailable on `completion`, `setup`, `skill`, and `version`; incompatible with --styled, --markdown, --ids-only, and --count) |
 | `--json` | JSON envelope output |
 | `--quiet` | Raw JSON data without envelope |
 | `--styled` | Human-readable styled output (tables, colors) |
