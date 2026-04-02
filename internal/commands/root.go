@@ -67,9 +67,9 @@ var (
 
 // rootCmd represents the base command.
 var rootCmd = &cobra.Command{
-	Use:   "fizzy",
-	Short: "Fizzy CLI - Command-line interface for the Fizzy API",
-	Long: `Command-line interface for Fizzy`,
+	Use:     "fizzy",
+	Short:   "Fizzy CLI - Command-line interface for the Fizzy API",
+	Long:    `Command-line interface for Fizzy`,
 	Version: "dev",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Resolve output format from parsed flags (must happen post-parse).
