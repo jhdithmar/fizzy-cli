@@ -24,11 +24,11 @@ type flagInfo struct {
 	Description string `json:"description"`
 }
 
-// commandsCmd emits a flat catalog of all commands with their flags.
+// commandsCmd emits a catalog of all commands with their flags.
 var commandsCmd = &cobra.Command{
 	Use:   "commands",
 	Short: "List all available commands",
-	Long:  "Lists all available commands with their flags in JSON format.",
+	Long:  "Lists all available commands. Use --json for a structured command catalog.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		catalog := walkCommands(rootCmd, "fizzy")
 		printSuccess(catalog)

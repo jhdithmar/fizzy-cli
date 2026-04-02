@@ -133,7 +133,7 @@ func renderCommandHelp(cmd *cobra.Command, w io.Writer) {
 
 	subs := visibleSubcommands(cmd)
 	usageLine := cmd.UseLine()
-	if len(subs) > 0 {
+	if len(subs) > 0 && !cmd.Runnable() {
 		usageLine = cmd.CommandPath() + " <command> [flags]"
 	}
 
@@ -376,6 +376,7 @@ var commandExamples = map[string]string{
 	"fizzy card create":       "$ fizzy card create --board <id> --title \"Fix billing bug\"",
 	"fizzy comment list":      "$ fizzy comment list --card <number>",
 	"fizzy comment create":    "$ fizzy comment create --card <number> --body \"Looks good\"",
+	"fizzy commands":          "$ fizzy commands\n$ fizzy commands --json",
 	"fizzy search":            "$ fizzy search \"billing bug\"\n$ fizzy search \"billing bug\" --board <id>",
 	"fizzy notification":      "$ fizzy notification tray\n$ fizzy notification list",
 	"fizzy notification tray": "$ fizzy notification tray",
