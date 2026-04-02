@@ -74,7 +74,7 @@ var rootCmd = &cobra.Command{
 	Long:    `Command-line interface for Fizzy`,
 	Version: "dev",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		outputWriteErr = nil
+		errOutputWrite = nil
 		// Early jq validation: check flag conflicts first (actionable message),
 		// then parse + compile before RunE so invalid expressions are rejected
 		// with no side effects. The compiled code is reused below to avoid
@@ -171,9 +171,9 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		if outputWriteErr != nil {
-			err := outputWriteErr
-			outputWriteErr = nil
+		if errOutputWrite != nil {
+			err := errOutputWrite
+			errOutputWrite = nil
 			return err
 		}
 		return nil
@@ -605,12 +605,12 @@ var testBuf bytes.Buffer
 // lastRawOutput holds the raw output from the last command (before buffer reset).
 var lastRawOutput string
 
-// outputWriteErr stores the first output rendering/writer error from the current command.
-var outputWriteErr error
+// errOutputWrite stores the first output rendering/writer error from the current command.
+var errOutputWrite error
 
 func recordOutputError(err error) {
-	if err != nil && outputWriteErr == nil {
-		outputWriteErr = err
+	if err != nil && errOutputWrite == nil {
+		errOutputWrite = err
 	}
 }
 
@@ -1361,7 +1361,7 @@ func ResetTestMode() {
 	errSDKInit = nil
 	lastResult = nil
 	lastRawOutput = ""
-	outputWriteErr = nil
+	errOutputWrite = nil
 	cfg = nil
 	creds = nil
 	profiles = nil
