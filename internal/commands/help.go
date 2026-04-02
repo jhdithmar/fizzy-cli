@@ -111,7 +111,7 @@ func renderRootHelp(cmd *cobra.Command, w io.Writer) {
 
 	if cmd.Example != "" {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, helpHeading(w, "EXAMPLES"))
+		fmt.Fprintln(w, "EXAMPLES")
 		printExampleBlock(w, cmd.Example)
 	}
 
@@ -170,7 +170,7 @@ func renderCommandHelp(cmd *cobra.Command, w io.Writer) {
 
 	if cmd.Example != "" {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, helpHeading(w, "EXAMPLES"))
+		fmt.Fprintln(w, "EXAMPLES")
 		printExampleBlock(w, cmd.Example)
 	}
 
@@ -336,18 +336,15 @@ func shouldShowDefault(f *pflag.Flag) bool {
 }
 
 func printExampleBlock(w io.Writer, example string) {
-	for _, line := range strings.Split(strings.TrimSpace(example), "\n") {
-		fmt.Fprintf(w, "  %s\n", line)
-	}
-}
-
-func helpHeading(w io.Writer, title string) string {
+	style := lipgloss.NewStyle()
 	if f, ok := w.(*os.File); ok {
 		if isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd()) {
-			return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12")).Render(title)
+			style = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
 		}
 	}
-	return title
+	for _, line := range strings.Split(strings.TrimSpace(example), "\n") {
+		fmt.Fprintf(w, "%s\n", style.Render("  "+line))
+	}
 }
 
 var rootCommandGroupsOrder = []string{"core", "collaboration", "admin", "utilities"}
