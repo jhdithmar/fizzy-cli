@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/basecamp/cli/credstore"
@@ -66,11 +67,9 @@ var (
 
 // rootCmd represents the base command.
 var rootCmd = &cobra.Command{
-	Use:   "fizzy",
-	Short: "Fizzy CLI - Command-line interface for the Fizzy API",
-	Long: `A command-line interface for the Fizzy API.
-
-Use fizzy to manage boards, cards, comments, and more from your terminal.`,
+	Use:     "fizzy",
+	Short:   "Fizzy CLI - Command-line interface for the Fizzy API",
+	Long:    `Command-line interface for Fizzy`,
 	Version: "dev",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Resolve output format from parsed flags (must happen post-parse).
@@ -155,16 +154,27 @@ func SetVersion(v string) {
 
 // Execute runs the root command.
 func Execute() {
+	configureCLIUX()
+
 	// Default to Auto — PersistentPreRunE will re-resolve from parsed flags.
 	outWriter = os.Stdout
 	out = output.New(output.Options{Format: output.FormatAuto, Writer: os.Stdout})
-	if err := rootCmd.Execute(); err != nil {
+	cmd, err := rootCmd.ExecuteC()
+	if err != nil {
+		if format, formatErr := resolveFormat(); formatErr == nil {
+			out = output.New(output.Options{Format: format, Writer: os.Stdout})
+		}
+
 		var e *output.Error
 		if !stderrors.As(err, &e) {
 			// Cobra-level errors (arg count, unknown flag) → usage
 			e = &output.Error{Code: output.CodeUsage, Message: err.Error()}
 		}
-		_ = out.Err(e)
+		if isHumanOutput() {
+			printHumanError(cmd, e)
+		} else {
+			_ = out.Err(e)
+		}
 		os.Exit(e.ExitCode())
 	}
 }
@@ -240,6 +250,55 @@ func IsMachineOutput() bool {
 	return false
 }
 
+func isHumanOutput() bool {
+	if cfgStyled || cfgMarkdown || requestedHumanOutput() {
+		return true
+	}
+	if out != nil {
+		switch out.EffectiveFormat() {
+		case output.FormatStyled, output.FormatMarkdown:
+			return true
+		default:
+			return false
+		}
+	}
+	return !IsMachineOutput()
+}
+
+func requestedHumanOutput() bool {
+	for _, arg := range os.Args[1:] {
+		if arg == "--styled" || arg == "--markdown" {
+			return true
+		}
+	}
+	return false
+}
+
+func printHumanError(cmd *cobra.Command, err error) {
+	e := output.AsError(err)
+	msg := strings.TrimSpace(e.Message)
+	if msg != "" {
+		fmt.Fprintln(os.Stderr, msg)
+	}
+	if e.Hint != "" && !strings.Contains(msg, e.Hint) {
+		fmt.Fprintf(os.Stderr, "\nHint: %s\n", e.Hint)
+	}
+	if e.Code == output.CodeUsage && !strings.Contains(msg, "--help") {
+		fmt.Fprintf(os.Stderr, "\nRun `%s` for usage.\n", usageHelpCommand(cmd))
+	}
+}
+
+func usageHelpCommand(cmd *cobra.Command) string {
+	if cmd == nil {
+		return rootCmd.CommandPath() + " --help"
+	}
+	path := strings.TrimSpace(cmd.CommandPath())
+	if path == "" {
+		path = rootCmd.CommandPath()
+	}
+	return path + " --help"
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgToken, "token", "", "API access token")
 	rootCmd.PersistentFlags().StringVar(&cfgProfile, "profile", "", "Named profile to use")
@@ -253,8 +312,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&cfgStyled, "styled", false, "Styled terminal output with colors")
 	rootCmd.PersistentFlags().BoolVar(&cfgMarkdown, "markdown", false, "Markdown formatted output")
 	rootCmd.PersistentFlags().IntVar(&cfgLimit, "limit", 0, "Maximum number of results to display")
-
-	installAgentHelp()
 }
 
 // getClient returns an API client configured from global settings.
@@ -493,13 +550,31 @@ func captureResponse() {
 
 // printSuccess prints a success response.
 func printSuccess(data any) {
-	_ = out.OK(data)
-	captureResponse()
+	switch out.EffectiveFormat() {
+	case output.FormatStyled:
+		fmt.Fprint(outWriter, renderHumanData(data, "", false))
+		captureResponse()
+	case output.FormatMarkdown:
+		fmt.Fprint(outWriter, renderHumanData(data, "", true))
+		captureResponse()
+	default:
+		_ = out.OK(data)
+		captureResponse()
+	}
 }
 
 func printSuccessWithLocation(location string) {
-	_ = out.OK(nil, output.WithContext("location", location))
-	captureResponse()
+	switch out.EffectiveFormat() {
+	case output.FormatStyled:
+		fmt.Fprint(outWriter, renderHumanData(nil, location, false))
+		captureResponse()
+	case output.FormatMarkdown:
+		fmt.Fprint(outWriter, renderHumanData(nil, location, true))
+		captureResponse()
+	default:
+		_ = out.OK(nil, output.WithContext("location", location))
+		captureResponse()
+	}
 }
 
 // breadcrumb creates a single breadcrumb.
@@ -585,16 +660,12 @@ func printList(data any, cols render.Columns, summary string, breadcrumbs []Brea
 
 	switch out.EffectiveFormat() {
 	case output.FormatStyled:
-		fmt.Fprint(outWriter, render.StyledList(toMaps(data), cols, summary))
-		if notice != "" {
-			fmt.Fprintf(outWriter, "\n%s\n", notice)
-		}
+		body := render.StyledList(toMaps(data), cols, summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, notice, "", breadcrumbs, false))
 		captureResponse()
 	case output.FormatMarkdown:
-		fmt.Fprint(outWriter, render.MarkdownList(toMaps(data), cols, summary))
-		if notice != "" {
-			fmt.Fprintf(outWriter, "\n%s\n", notice)
-		}
+		body := render.MarkdownList(toMaps(data), cols, summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, notice, "", breadcrumbs, true))
 		captureResponse()
 	default:
 		opts := []output.ResponseOption{output.WithBreadcrumbs(breadcrumbs...)}
@@ -617,16 +688,12 @@ func printListPaginated(data any, cols render.Columns, hasNext bool, nextURL str
 
 	switch out.EffectiveFormat() {
 	case output.FormatStyled:
-		fmt.Fprint(outWriter, render.StyledList(toMaps(data), cols, summary))
-		if notice != "" {
-			fmt.Fprintf(outWriter, "\n%s\n", notice)
-		}
+		body := render.StyledList(toMaps(data), cols, summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, notice, "", breadcrumbs, false))
 		captureResponse()
 	case output.FormatMarkdown:
-		fmt.Fprint(outWriter, render.MarkdownList(toMaps(data), cols, summary))
-		if notice != "" {
-			fmt.Fprintf(outWriter, "\n%s\n", notice)
-		}
+		body := render.MarkdownList(toMaps(data), cols, summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, notice, "", breadcrumbs, true))
 		captureResponse()
 	default:
 		opts := []output.ResponseOption{output.WithBreadcrumbs(breadcrumbs...)}
@@ -651,10 +718,12 @@ func printListPaginated(data any, cols render.Columns, hasNext bool, nextURL str
 func printDetail(data any, summary string, breadcrumbs []Breadcrumb) {
 	switch out.EffectiveFormat() {
 	case output.FormatStyled:
-		fmt.Fprint(outWriter, render.StyledDetail(toMap(data), summary))
+		body := render.StyledDetail(toMap(data), summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, "", "", breadcrumbs, false))
 		captureResponse()
 	case output.FormatMarkdown:
-		fmt.Fprint(outWriter, render.MarkdownDetail(toMap(data), summary))
+		body := render.MarkdownDetail(toMap(data), summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, "", "", breadcrumbs, true))
 		captureResponse()
 	default:
 		printSuccessWithBreadcrumbs(data, summary, breadcrumbs)
@@ -665,10 +734,12 @@ func printDetail(data any, summary string, breadcrumbs []Breadcrumb) {
 func printMutationWithLocation(data any, location string, breadcrumbs []Breadcrumb) {
 	switch out.EffectiveFormat() {
 	case output.FormatStyled:
-		fmt.Fprint(outWriter, render.StyledDetail(toMap(data), ""))
+		body := render.StyledDetail(toMap(data), "")
+		fmt.Fprint(outWriter, appendHumanSections(body, "", location, breadcrumbs, false))
 		captureResponse()
 	case output.FormatMarkdown:
-		fmt.Fprint(outWriter, render.MarkdownDetail(toMap(data), ""))
+		body := render.MarkdownDetail(toMap(data), "")
+		fmt.Fprint(outWriter, appendHumanSections(body, "", location, breadcrumbs, true))
 		captureResponse()
 	default:
 		printSuccessWithLocationAndBreadcrumbs(data, location, breadcrumbs)
@@ -680,14 +751,174 @@ func printMutationWithLocation(data any, location string, breadcrumbs []Breadcru
 func printMutation(data any, summary string, breadcrumbs []Breadcrumb) {
 	switch out.EffectiveFormat() {
 	case output.FormatStyled:
-		fmt.Fprint(outWriter, render.StyledSummary(toMap(data), summary))
+		body := render.StyledSummary(toMap(data), summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, "", "", breadcrumbs, false))
 		captureResponse()
 	case output.FormatMarkdown:
-		fmt.Fprint(outWriter, render.MarkdownSummary(toMap(data), summary))
+		body := render.MarkdownSummary(toMap(data), summary)
+		fmt.Fprint(outWriter, appendHumanSections(body, "", "", breadcrumbs, true))
 		captureResponse()
 	default:
 		printSuccessWithBreadcrumbs(data, summary, breadcrumbs)
 	}
+}
+
+func renderHumanData(data any, location string, markdown bool) string {
+	switch v := data.(type) {
+	case nil:
+		if markdown {
+			return appendHumanSections(render.MarkdownSummary(nil, ""), "", location, nil, true)
+		}
+		return appendHumanSections(render.StyledSummary(nil, ""), "", location, nil, false)
+	case map[string]any:
+		if markdown {
+			return appendHumanSections(render.MarkdownDetail(v, ""), "", location, nil, true)
+		}
+		return appendHumanSections(render.StyledDetail(v, ""), "", location, nil, false)
+	}
+
+	if maps := toMaps(data); maps != nil {
+		cols := inferColumns(maps)
+		if markdown {
+			return appendHumanSections(render.MarkdownList(maps, cols, ""), "", location, nil, true)
+		}
+		return appendHumanSections(render.StyledList(maps, cols, ""), "", location, nil, false)
+	}
+
+	if m := toMap(data); m != nil {
+		if markdown {
+			return appendHumanSections(render.MarkdownDetail(m, ""), "", location, nil, true)
+		}
+		return appendHumanSections(render.StyledDetail(m, ""), "", location, nil, false)
+	}
+
+	value := fmt.Sprintf("%v\n", data)
+	return appendHumanSections(value, "", location, nil, markdown)
+}
+
+func appendHumanSections(body, notice, location string, breadcrumbs []Breadcrumb, markdown bool) string {
+	body = strings.TrimRight(body, "\n")
+	var sb strings.Builder
+	if body != "" {
+		sb.WriteString(body)
+		sb.WriteString("\n")
+	}
+	if notice != "" {
+		sb.WriteString("\n")
+		if markdown {
+			sb.WriteString("> ")
+		}
+		sb.WriteString(notice)
+		sb.WriteString("\n")
+	}
+	if location != "" {
+		sb.WriteString("\n")
+		if markdown {
+			sb.WriteString("**Location:** `")
+			sb.WriteString(location)
+			sb.WriteString("`\n")
+		} else {
+			sb.WriteString("Location: ")
+			sb.WriteString(location)
+			sb.WriteString("\n")
+		}
+	}
+	if len(breadcrumbs) > 0 {
+		sb.WriteString("\n")
+		if markdown {
+			sb.WriteString("### Next steps\n")
+			for _, crumb := range breadcrumbs {
+				sb.WriteString("- `")
+				sb.WriteString(crumb.Cmd)
+				sb.WriteString("`")
+				if crumb.Description != "" {
+					sb.WriteString(" — ")
+					sb.WriteString(crumb.Description)
+				}
+				sb.WriteString("\n")
+			}
+		} else {
+			sb.WriteString("Next steps:\n")
+			for _, crumb := range breadcrumbs {
+				sb.WriteString("  ")
+				sb.WriteString(crumb.Cmd)
+				if crumb.Description != "" {
+					sb.WriteString("  # ")
+					sb.WriteString(crumb.Description)
+				}
+				sb.WriteString("\n")
+			}
+		}
+	}
+	return sb.String()
+}
+
+func inferColumns(data []map[string]any) render.Columns {
+	if len(data) == 0 {
+		return render.Columns{{Header: "Value", Field: "id"}}
+	}
+
+	priority := map[string]int{
+		"number":      0,
+		"id":          1,
+		"profile":     2,
+		"name":        3,
+		"title":       4,
+		"description": 5,
+		"active":      6,
+		"board":       7,
+		"base_url":    8,
+	}
+
+	keys := make([]string, 0, len(data[0]))
+	for key := range data[0] {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		pi, okI := priority[keys[i]]
+		pj, okJ := priority[keys[j]]
+		if okI && okJ {
+			return pi < pj
+		}
+		if okI {
+			return true
+		}
+		if okJ {
+			return false
+		}
+		return keys[i] < keys[j]
+	})
+
+	if len(keys) > 4 {
+		keys = keys[:4]
+	}
+
+	cols := make(render.Columns, 0, len(keys))
+	for _, key := range keys {
+		cols = append(cols, render.Column{Header: humanizeFieldName(key), Field: key})
+	}
+	return cols
+}
+
+func humanizeFieldName(name string) string {
+	parts := strings.Split(name, "_")
+	for i, part := range parts {
+		if part == "id" {
+			parts[i] = "ID"
+			continue
+		}
+		parts[i] = titleWord(part)
+	}
+	return strings.Join(parts, " ")
+}
+
+func titleWord(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(strings.ToLower(s))
+	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+	return string(runes)
 }
 
 // toMaps converts any (expected []any of map[string]any) to []map[string]any.
