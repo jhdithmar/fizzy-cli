@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -111,6 +112,20 @@ func parseSurfaceEntries(s string) []surface.Entry {
 				name := subParts[len(subParts)-1]
 				path := strings.Join(subParts[:len(subParts)-1], " ")
 				entries = append(entries, surface.Entry{Kind: kind, Path: path, Name: name})
+			}
+		case surface.KindArg:
+			argParts := strings.Fields(rest)
+			if len(argParts) >= 3 {
+				path := strings.Join(argParts[:len(argParts)-2], " ")
+				nameSpec := argParts[len(argParts)-1]
+				entry := surface.Entry{Kind: kind, Path: path, Name: strings.Trim(nameSpec, "[]<>")}
+				if pos, err := strconv.Atoi(argParts[len(argParts)-2]); err == nil {
+					entry.Position = pos
+				}
+				entry.Required = strings.HasPrefix(nameSpec, "<")
+				entry.Variadic = strings.HasSuffix(nameSpec, "...]") || strings.HasSuffix(nameSpec, "...>")
+				entry.Name = strings.TrimSuffix(entry.Name, "...")
+				entries = append(entries, entry)
 			}
 		}
 	}
