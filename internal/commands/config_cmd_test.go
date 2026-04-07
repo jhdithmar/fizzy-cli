@@ -157,6 +157,98 @@ func TestConfigExplainShowsPrecedence(t *testing.T) {
 	}
 }
 
+func TestConfigShowVerboseIncludesProfiles(t *testing.T) {
+	configDir := t.TempDir()
+	profileDir := t.TempDir()
+	config.SetTestConfigDir(configDir)
+	defer config.ResetTestConfigDir()
+
+	profileStore := profile.NewStore(filepath.Join(profileDir, "config.json"))
+	if err := profileStore.Create(&profile.Profile{Name: "acme", BaseURL: "https://acme.example.com"}); err != nil {
+		t.Fatalf("create profile: %v", err)
+	}
+	if err := profileStore.SetDefault("acme"); err != nil {
+		t.Fatalf("set default: %v", err)
+	}
+
+	mock := NewMockClient()
+	SetTestModeWithSDK(mock)
+	SetTestProfiles(profileStore)
+	SetTestFormat(output.FormatStyled)
+	SetTestConfig("", "acme", "https://acme.example.com")
+	cfgVerbose = true
+	defer func() { cfgVerbose = false }()
+	defer resetTest()
+
+	err := configShowCmd.RunE(configShowCmd, []string{})
+	assertExitCode(t, err, 0)
+
+	raw := TestOutput()
+	if !strings.Contains(raw, "acme") {
+		t.Fatalf("expected saved profile 'acme' in verbose styled output, got:\n%s", raw)
+	}
+	if !strings.Contains(raw, "Saved Profiles") {
+		t.Fatalf("expected 'Saved Profiles' label in verbose styled output, got:\n%s", raw)
+	}
+}
+
+func TestConfigShowVerboseJSONIncludesProfiles(t *testing.T) {
+	configDir := t.TempDir()
+	profileDir := t.TempDir()
+	config.SetTestConfigDir(configDir)
+	defer config.ResetTestConfigDir()
+
+	profileStore := profile.NewStore(filepath.Join(profileDir, "config.json"))
+	if err := profileStore.Create(&profile.Profile{Name: "staging", BaseURL: "https://staging.example.com"}); err != nil {
+		t.Fatalf("create profile: %v", err)
+	}
+	if err := profileStore.SetDefault("staging"); err != nil {
+		t.Fatalf("set default: %v", err)
+	}
+
+	mock := NewMockClient()
+	result := SetTestModeWithSDK(mock)
+	SetTestProfiles(profileStore)
+	SetTestConfig("", "staging", "https://staging.example.com")
+	cfgVerbose = true
+	defer func() { cfgVerbose = false }()
+	defer resetTest()
+
+	err := configShowCmd.RunE(configShowCmd, []string{})
+	assertExitCode(t, err, 0)
+
+	data, ok := result.Response.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map response data, got %#v", result.Response.Data)
+	}
+	profiles, ok := data["profiles"]
+	if !ok {
+		t.Fatalf("expected 'profiles' key in verbose JSON response, got keys: %v", mapKeys(data))
+	}
+	items, ok := profiles.([]string)
+	if !ok {
+		anyItems, okAny := profiles.([]any)
+		if !okAny {
+			t.Fatalf("expected profiles slice, got %#v", profiles)
+		}
+		items = make([]string, 0, len(anyItems))
+		for _, item := range anyItems {
+			items = append(items, item.(string))
+		}
+	}
+	if len(items) != 1 || !strings.Contains(items[0], "staging") {
+		t.Fatalf("expected saved profile 'staging', got %#v", items)
+	}
+}
+
+func mapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func TestConfigExplainStyledOutput(t *testing.T) {
 	configDir := t.TempDir()
 	config.SetTestConfigDir(configDir)

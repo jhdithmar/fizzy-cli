@@ -131,7 +131,7 @@ func configShowData(verbose bool) map[string]any {
 			"profiles": savedProfileNames(),
 		}
 	} else {
-		data["saved_profiles"] = savedProfileNames()
+		data["profiles"] = savedProfileNames()
 	}
 
 	return data

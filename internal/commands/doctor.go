@@ -1253,13 +1253,27 @@ func doctorTargetsFromProfileStore() []doctorEffectiveConfig {
 		tokenRaw, tokenSource, token := doctorStoredTokenSourceForProfile(name, localCfg, globalCfg)
 		apiURL := config.DefaultAPIURL
 		apiURLSource := "default"
-		if p != nil && strings.TrimSpace(p.BaseURL) != "" {
+		switch {
+		case p != nil && strings.TrimSpace(p.BaseURL) != "":
 			apiURL = p.BaseURL
 			apiURLSource = "profile store"
+		case localCfg != nil && strings.TrimSpace(localCfg.APIURL) != "":
+			apiURL = localCfg.APIURL
+			apiURLSource = "local config"
+		case globalCfg != nil && strings.TrimSpace(globalCfg.APIURL) != "":
+			apiURL = globalCfg.APIURL
+			apiURLSource = "global config"
 		}
 		boardSource := "unset"
-		if board != "" {
+		switch {
+		case board != "":
 			boardSource = "profile store"
+		case localCfg != nil && strings.TrimSpace(localCfg.Board) != "":
+			board = localCfg.Board
+			boardSource = "local config"
+		case globalCfg != nil && strings.TrimSpace(globalCfg.Board) != "":
+			board = globalCfg.Board
+			boardSource = "global config"
 		}
 		targets = append(targets, doctorEffectiveConfig{
 			ProfileName:    name,
@@ -1292,10 +1306,10 @@ func doctorStoredTokenSourceForProfile(account string, localCfg, globalCfg *conf
 			return "legacy-fallback", "legacy fallback credential file", token
 		}
 	}
-	if localCfg != nil && localCfg.Account == account && localCfg.Token != "" {
+	if localCfg != nil && localCfg.Token != "" {
 		return "local-config", "local config file", localCfg.Token
 	}
-	if globalCfg != nil && globalCfg.Account == account && globalCfg.Token != "" {
+	if globalCfg != nil && globalCfg.Token != "" {
 		return "global-config", "global config file", globalCfg.Token
 	}
 	return "none", "not configured", ""

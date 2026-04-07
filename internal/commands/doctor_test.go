@@ -394,6 +394,150 @@ func TestDoctorAllProfilesIncludesPerProfileResults(t *testing.T) {
 	}
 }
 
+func TestDoctorTargetsFromProfileStoreUsesYAMLBoardFallback(t *testing.T) {
+	configDir := t.TempDir()
+	workDir := t.TempDir()
+	profileDir := t.TempDir()
+	config.SetTestConfigDir(configDir)
+	config.SetTestWorkingDir(workDir)
+	defer config.ResetTestConfigDir()
+	defer config.ResetTestWorkingDir()
+
+	// Global config sets board — profile does not.
+	globalConfig := "board: global-board\n"
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(globalConfig), 0o600); err != nil {
+		t.Fatalf("write global config: %v", err)
+	}
+
+	profileStore := profile.NewStore(filepath.Join(profileDir, "config.json"))
+
+	mock := NewMockClient()
+	SetTestModeWithSDK(mock)
+
+	// Profile has BaseURL (required) but no board.
+	if err := profileStore.Create(&profile.Profile{Name: "acme", BaseURL: testHTTPServer.URL}); err != nil {
+		t.Fatalf("create acme profile: %v", err)
+	}
+	if err := profileStore.SetDefault("acme"); err != nil {
+		t.Fatalf("set default profile: %v", err)
+	}
+	SetTestCreds(nil)
+	SetTestProfiles(profileStore)
+	SetTestConfig("", "", testHTTPServer.URL)
+	defer resetTest()
+
+	targets := doctorTargetsFromProfileStore()
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 target, got %d", len(targets))
+	}
+
+	target := targets[0]
+	// api_url comes from profile store since it has BaseURL
+	if target.APIURL != testHTTPServer.URL {
+		t.Fatalf("expected APIURL from profile store, got %q", target.APIURL)
+	}
+	if target.APIURLSource != "profile store" {
+		t.Fatalf("expected APIURLSource 'profile store', got %q", target.APIURLSource)
+	}
+	// board should fall back to global config
+	if target.Board != "global-board" {
+		t.Fatalf("expected Board from global config, got %q", target.Board)
+	}
+	if target.BoardSource != "global config" {
+		t.Fatalf("expected BoardSource 'global config', got %q", target.BoardSource)
+	}
+}
+
+func TestDoctorTargetsFromProfileStoreLocalBoardTakesPrecedence(t *testing.T) {
+	configDir := t.TempDir()
+	workDir := t.TempDir()
+	profileDir := t.TempDir()
+	config.SetTestConfigDir(configDir)
+	config.SetTestWorkingDir(workDir)
+	defer config.ResetTestConfigDir()
+	defer config.ResetTestWorkingDir()
+
+	// Both local and global set board — local should win.
+	globalConfig := "board: global-board\n"
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(globalConfig), 0o600); err != nil {
+		t.Fatalf("write global config: %v", err)
+	}
+	localConfig := "board: local-board\n"
+	if err := os.WriteFile(filepath.Join(workDir, config.LocalConfigFile), []byte(localConfig), 0o600); err != nil {
+		t.Fatalf("write local config: %v", err)
+	}
+
+	profileStore := profile.NewStore(filepath.Join(profileDir, "config.json"))
+
+	mock := NewMockClient()
+	SetTestModeWithSDK(mock)
+
+	if err := profileStore.Create(&profile.Profile{Name: "acme", BaseURL: testHTTPServer.URL}); err != nil {
+		t.Fatalf("create acme profile: %v", err)
+	}
+	if err := profileStore.SetDefault("acme"); err != nil {
+		t.Fatalf("set default profile: %v", err)
+	}
+	SetTestCreds(nil)
+	SetTestProfiles(profileStore)
+	SetTestConfig("", "", testHTTPServer.URL)
+	defer resetTest()
+
+	targets := doctorTargetsFromProfileStore()
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 target, got %d", len(targets))
+	}
+
+	target := targets[0]
+	if target.Board != "local-board" {
+		t.Fatalf("expected Board from local config, got %q", target.Board)
+	}
+	if target.BoardSource != "local config" {
+		t.Fatalf("expected BoardSource 'local config', got %q", target.BoardSource)
+	}
+}
+
+func TestDoctorStoredTokenSourceIgnoresAccountMismatch(t *testing.T) {
+	// YAML token should be a valid fallback for any profile, regardless of
+	// whether the YAML account field matches the profile name. This matches
+	// the runtime behaviour in config.Load() and doctorTokenSourceWithValue().
+	globalCfg := &config.Config{Token: "yaml-token", Account: "other-account"}
+	localCfg := (*config.Config)(nil)
+
+	// Set creds to nil so keyring/fallback paths are skipped.
+	savedCreds := creds
+	creds = nil
+	defer func() { creds = savedCreds }()
+
+	raw, source, token := doctorStoredTokenSourceForProfile("acme", localCfg, globalCfg)
+	if token != "yaml-token" {
+		t.Fatalf("expected yaml-token, got %q", token)
+	}
+	if raw != "global-config" {
+		t.Fatalf("expected raw source 'global-config', got %q", raw)
+	}
+	if source != "global config file" {
+		t.Fatalf("expected source 'global config file', got %q", source)
+	}
+}
+
+func TestDoctorStoredTokenSourceLocalBeforeGlobal(t *testing.T) {
+	localCfg := &config.Config{Token: "local-token"}
+	globalCfg := &config.Config{Token: "global-token"}
+
+	savedCreds := creds
+	creds = nil
+	defer func() { creds = savedCreds }()
+
+	raw, _, token := doctorStoredTokenSourceForProfile("acme", localCfg, globalCfg)
+	if token != "local-token" {
+		t.Fatalf("expected local-token, got %q", token)
+	}
+	if raw != "local-config" {
+		t.Fatalf("expected raw source 'local-config', got %q", raw)
+	}
+}
+
 func credsSaveProfileTokenForTest(store *credstore.Store, profileName, token string) error {
 	data, err := json.Marshal(token)
 	if err != nil {
