@@ -24,5 +24,8 @@ func TestAuthMissingToken(t *testing.T) {
 	missingCfg := *cfg
 	missingCfg.Token = ""
 	h := harness.NewWithConfig(t, &missingCfg)
-	assertResult(t, h.Run("board", "list"), harness.ExitAuthFailure)
+	assertResult(t, h.RunWithEnv(map[string]string{
+		"FIZZY_TOKEN":   "",
+		"FIZZY_ACCOUNT": "",
+	}, "board", "list"), harness.ExitAuthFailure)
 }

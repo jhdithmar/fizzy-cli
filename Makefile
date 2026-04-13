@@ -96,7 +96,7 @@ test-unit: check-toolchain
 e2e: build
 	@if [ -z "$$FIZZY_TEST_TOKEN" ]; then echo "Error: FIZZY_TEST_TOKEN not set"; exit 1; fi
 	@if [ -z "$$FIZZY_TEST_ACCOUNT" ]; then echo "Error: FIZZY_TEST_ACCOUNT not set"; exit 1; fi
-	go test -v -timeout 10m ./e2e/cli_tests/...
+	go test -v -count=1 -timeout 10m ./e2e/cli_tests/...
 
 test-e2e: e2e
 
@@ -108,7 +108,7 @@ e2e-file: build
 	@if [ -z "$(FILE)" ]; then echo "Usage: make e2e-file FILE=crud_board"; exit 1; fi
 	@if [ -z "$$FIZZY_TEST_TOKEN" ]; then echo "Error: FIZZY_TEST_TOKEN not set"; exit 1; fi
 	@if [ -z "$$FIZZY_TEST_ACCOUNT" ]; then echo "Error: FIZZY_TEST_ACCOUNT not set"; exit 1; fi
-	go test -v ./e2e/cli_tests/$(FILE)_test.go
+	go test -v -count=1 ./e2e/cli_tests/$(FILE)_test.go
 
 test-file: e2e-file
 
@@ -117,7 +117,7 @@ e2e-run: build
 	@if [ -z "$(NAME)" ]; then echo "Usage: make e2e-run NAME=TestBoardList"; exit 1; fi
 	@if [ -z "$$FIZZY_TEST_TOKEN" ]; then echo "Error: FIZZY_TEST_TOKEN not set"; exit 1; fi
 	@if [ -z "$$FIZZY_TEST_ACCOUNT" ]; then echo "Error: FIZZY_TEST_ACCOUNT not set"; exit 1; fi
-	go test -v -run $(NAME) ./e2e/cli_tests/...
+	go test -v -count=1 -run $(NAME) ./e2e/cli_tests/...
 
 test-run: e2e-run
 

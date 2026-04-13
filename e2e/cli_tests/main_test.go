@@ -28,42 +28,45 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	os.Exit(runMain(m))
+}
+
+func runMain(m *testing.M) int {
 	cfg = harness.LoadConfig()
 	if missing := cfg.MissingVars(); len(missing) > 0 {
 		fmt.Fprintf(os.Stderr, "Skipping CLI e2e tests — missing env vars: %v\n", missing)
 		fmt.Fprintln(os.Stderr, "Set FIZZY_TEST_TOKEN and FIZZY_TEST_ACCOUNT to run these tests.")
-		os.Exit(0)
+		return 0
 	}
 
 	if !fileExists(cfg.BinaryPath) {
 		repoRoot, err := harness.RepoRoot()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			return 1
 		}
 		tmpDir, err := os.MkdirTemp("", "fizzy-e2e-cli-build-*")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			return 1
 		}
+		defer os.RemoveAll(tmpDir)
 		binPath := filepath.Join(tmpDir, "fizzy")
 		cmd := exec.Command("go", "build", "-o", binPath, "./cmd/fizzy")
 		cmd.Dir = repoRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
-			_ = os.RemoveAll(tmpDir)
 			fmt.Fprintf(os.Stderr, "failed to build binary: %v\n%s\n", err, string(out))
-			os.Exit(1)
+			return 1
 		}
 		_ = os.Setenv("FIZZY_TEST_BINARY", binPath)
 		cfg.BinaryPath = binPath
-		defer os.RemoveAll(tmpDir)
 	}
 
 	var err error
 	fixture, err = harness.NewSharedFixture(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "fixture setup failed: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 	printFixtureInfo()
 
@@ -72,7 +75,7 @@ func TestMain(m *testing.M) {
 	if os.Getenv("FIZZY_E2E_KEEP_FIXTURE") == "1" {
 		fmt.Fprintln(os.Stderr, "Keeping CLI e2e fixture (FIZZY_E2E_KEEP_FIXTURE=1)")
 		printFixtureInfo()
-		os.Exit(code)
+		return code
 	}
 	if delay := teardownDelay(); delay > 0 {
 		fmt.Fprintf(os.Stderr, "Delaying CLI e2e fixture teardown for %s\n", delay)
@@ -82,7 +85,7 @@ func TestMain(m *testing.M) {
 	if err := fixture.Teardown(); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: fixture teardown error: %v\n", err)
 	}
-	os.Exit(code)
+	return code
 }
 
 func printFixtureInfo() {
