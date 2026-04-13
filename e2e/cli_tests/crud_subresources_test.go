@@ -105,19 +105,23 @@ func TestStepCRUD(t *testing.T) {
 
 func TestReactionCRUD(t *testing.T) {
 	h := newHarness(t)
+	userID := currentUserID(t, h)
 	cardStr := strconv.Itoa(fixture.CardNumber)
+	cardReactionContent := "+1"
+	commentReactionContent := "heart"
+
 	cardReactionsBefore := h.Run("reaction", "list", "--card", cardStr)
 	assertOK(t, cardReactionsBefore)
 	commentReactionsBefore := h.Run("reaction", "list", "--card", cardStr, "--comment", fixture.CommentID)
 	assertOK(t, commentReactionsBefore)
 
-	cardReaction := h.Run("reaction", "create", "--card", cardStr, "--content", "+1")
+	cardReaction := h.Run("reaction", "create", "--card", cardStr, "--content", cardReactionContent)
 	assertOK(t, cardReaction)
 	cardReactions := h.Run("reaction", "list", "--card", cardStr)
 	assertOK(t, cardReactions)
-	cardReactionID := listAddedID(cardReactionsBefore.GetDataArray(), cardReactions.GetDataArray())
+	cardReactionID := addedReactionID(cardReactionsBefore.GetDataArray(), cardReactions.GetDataArray(), cardReactionContent, userID)
 	if cardReactionID == "" {
-		t.Fatal("expected created card reaction to appear in list")
+		t.Fatal("expected exactly one created card reaction for the current user to appear in list")
 	}
 	t.Cleanup(func() {
 		if cardReactionID != "" {
@@ -136,13 +140,13 @@ func TestReactionCRUD(t *testing.T) {
 		t.Fatalf("expected deleted card reaction %q to be absent from list", deletedCardReactionID)
 	}
 
-	commentReaction := h.Run("reaction", "create", "--card", cardStr, "--comment", fixture.CommentID, "--content", "heart")
+	commentReaction := h.Run("reaction", "create", "--card", cardStr, "--comment", fixture.CommentID, "--content", commentReactionContent)
 	assertOK(t, commentReaction)
 	commentReactions := h.Run("reaction", "list", "--card", cardStr, "--comment", fixture.CommentID)
 	assertOK(t, commentReactions)
-	commentReactionID := listAddedID(commentReactionsBefore.GetDataArray(), commentReactions.GetDataArray())
+	commentReactionID := addedReactionID(commentReactionsBefore.GetDataArray(), commentReactions.GetDataArray(), commentReactionContent, userID)
 	if commentReactionID == "" {
-		t.Fatal("expected created comment reaction to appear in list")
+		t.Fatal("expected exactly one created comment reaction for the current user to appear in list")
 	}
 	t.Cleanup(func() {
 		if commentReactionID != "" {

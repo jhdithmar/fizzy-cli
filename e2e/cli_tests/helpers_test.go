@@ -216,6 +216,46 @@ func listAddedID(before, after []any) string {
 	return ""
 }
 
+func addedReactionID(before, after []any, content, userID string) string {
+	seen := make(map[string]struct{}, len(before))
+	for _, item := range before {
+		m := asMap(item)
+		if m == nil {
+			continue
+		}
+		if id := mapValueString(m, "id"); id != "" {
+			seen[id] = struct{}{}
+		}
+	}
+
+	matches := []string{}
+	for _, item := range after {
+		m := asMap(item)
+		if m == nil {
+			continue
+		}
+		id := mapValueString(m, "id")
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		if mapValueString(m, "content") != content {
+			continue
+		}
+		reacter := asMap(m["reacter"])
+		if userID != "" && mapValueString(reacter, "id") != userID {
+			continue
+		}
+		matches = append(matches, id)
+	}
+	if len(matches) == 1 {
+		return matches[0]
+	}
+	return ""
+}
+
 func bodyPlainText(m map[string]any) string {
 	if m == nil {
 		return ""
